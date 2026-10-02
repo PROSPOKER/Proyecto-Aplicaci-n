@@ -74,9 +74,9 @@ Use task candidates from current scene; never record a real activity through fic
 - [x] 90-second autonomy and interaction checks complete in all three scenes, with no fictional real records.
 - [x] Mobile/desktop, audio, clock, reminders and persistence final verification complete.
 - [x] Visible release ID v0.7 and cache references 20261002-07 set.
-- [ ] Source uploaded to main.
-- [ ] Pages deployment completion confirmed.
-- [ ] Public v0.7 checked from its URL.
+- [x] Source uploaded to main; application commit `d6b7f8b`, confirmed through the remote ref.
+- [ ] Pages deployment completion confirmed: unavailable from this environment (Actions API returns Forbidden).
+- [ ] Public v0.7 checked from its URL: unavailable from this environment (CONNECT 403 and Chromium tunnel failure).
 
 ## Verified milestones
 
@@ -86,3 +86,7 @@ Use task candidates from current scene; never record a real activity through fic
 - Coordinator adds corrupt-save preservation, one clock zone across reminders/records, and panel/modal/tab pause coordination.
 
 These are local integration checkpoints. The release is committed and published only when their combined final browser checks pass. Source push, Pages deployment and public version verification are separate release statuses.
+
+## Publication status
+
+The application source was pushed successfully to `main` and its remote ref was checked. The expected public address is https://prospoker.github.io/Proyecto-Aplicaci-n/?v=20261002-07 and the visible identifier is **v0.7 · mundo vivo**. Pages deployment completion and public content could not be independently established because this environment blocks the required HTTP connections. A successful source push does not establish either status. The connection failures do not establish that the public site itself returns an error.
