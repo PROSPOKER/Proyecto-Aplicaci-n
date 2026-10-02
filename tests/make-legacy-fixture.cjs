@@ -1,0 +1,31 @@
+/* Generate an actual pre-refactor v2 save without executing or changing the app. */
+const { execFileSync } = require('node:child_process');
+const vm = require('node:vm');
+const fs = require('node:fs');
+const path = require('node:path');
+const revision = '3ba5924';
+const read = name => execFileSync('git', ['show', `${revision}:${name}`], { encoding: 'utf8' });
+const html = read('index.html');
+const domain = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
+const context = vm.createContext({ console, Date, Math });
+vm.runInContext(read('care.js'), context);
+vm.runInContext(domain, context);
+const data = vm.runInContext('freshState()', context);
+data.onboard = true;
+data.profile.name = 'Persona anterior';
+data.profile.cat = 'Gato anterior';
+data.profile.care.configured = true;
+data.profile.care.slots.forEach(slot => { slot.enabled = false; });
+// Valid one-pixel JPEG; testing preservation must not introduce a broken image.
+data.profile.photo = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD1aiiiuYo//9k=';
+data.real.records.push({ id: 'old-real-1', action: 'learn', minutes: 5, status: 'done', day: 20600, date: '2026-05-26', choice: 'care' });
+data.real.choices.push({ action: 'learn', situation: 'care', status: 'accepted', day: 20600 });
+data.real.events.push({ id: 'old-event-1', kind: 'memory', day: 20600, date: '2026-05-26', title: 'Recuerdo anterior', text: 'Una página leída.', recordId: 'old-real-1', action: 'learn' });
+data.real.memories.push('Una página leída.');
+data.real.flags.library = true;
+data.real.active = { id: 'old-timer-1', action: 'rest', duration: 3, situation: 'care', title: 'Pausa anterior', day: 20728, date: '2026-10-02', timerEnd: Date.parse('2026-10-02T15:03:00Z'), timerAlerted: false };
+data.demo.records.push({ id: 'old-demo-1', action: 'hobby', minutes: 3, status: 'done', day: 2, date: 'Ensayo · día 3', choice: 'care' });
+data.demo.day = 2;
+const output = path.join(__dirname, 'fixtures', 'v2-before-refactor.json');
+fs.writeFileSync(output, JSON.stringify(data, null, 2) + '\n');
+console.log(`Historical save generated from ${revision}: ${output}`);

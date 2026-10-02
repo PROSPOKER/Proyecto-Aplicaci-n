@@ -1,0 +1,44 @@
+/* Calm, original coastal palette. Keep the living scene clear of interface cards. */
+:root{--teal:#5f8d83;--cream:#fff9ef;--line:#e3dbc9;--text:#465c59;--muted:#657269;--shadow:0 10px 35px #435d5810}
+body{background:#e2ece5;color:var(--text)}
+.brand{padding:5px 0}.wordmark{color:#4e756b;font-size:29px;letter-spacing:-1.5px}.wordmark b{color:#d3a192}.versionStamp{font-size:9px;letter-spacing:.15px;color:#657269}
+.btn{background:#507967;color:#fffdf4;border-radius:13px;border:1px solid #719a8b;box-shadow:0 3px 0 #678d7e;min-height:44px}.btn:hover{background:#456b59}.btn.secondary{background:#f2f4e9;color:#4d6b5c;border-color:#d7dfcf;box-shadow:none}.btn.gold{background:#ddbb85;color:#5a6257;border-color:#d2ad77;box-shadow:none}.textbtn{color:#5d7163}
+.tools summary,.soundControl{background:#fff8ecef;border-color:#eee4d2;color:#789789}.toolsContent{background:#fffaf0;border-color:#e2dfce}.toolsContent .btn{min-height:39px}.soundControl.enabled{background:#dfeae0;color:#568574}
+.realClock{top:70px;background:#fff9edee;border-color:#f5f1df;color:#5c7164;box-shadow:0 4px 18px #68897710;font-size:11px;padding:8px 12px}.realClock strong{font-weight:650;font-size:12px}.clockDot{background:#e4b480}
+#sceneNav{position:fixed;left:50%;top:111px;transform:translateX(-50%);display:flex;gap:5px;padding:4px;border:1px solid #edf0df;background:#fff9eeec;border-radius:18px;z-index:22;width:max-content;max-width:calc(100% - 30px);box-shadow:0 3px 12px #66836b0c}
+#sceneNav button{background:transparent;color:#657269;min-height:33px;padding:7px 12px;font-size:11px;line-height:1.1;border-radius:13px;white-space:nowrap}
+#sceneNav button.active,#sceneNav button[aria-pressed=true]{background:#e0eadf;color:#456553;font-weight:600}
+body:has(#sceneNav:not(.hidden)) .worldLabel{display:none}.worldHint{font-size:10px;background:#fff9edc9;color:#657269;padding:7px 10px;bottom:125px;left:16px}
+.homeCard{bottom:103px;padding:17px 20px 13px;max-width:345px;border:1px solid #faf1df;background:#fffaf0f5;box-shadow:0 10px 32px #52746010;border-radius:22px;max-height:calc(100dvh - 395px)}
+.homeCard h2{color:#506b5f;font-size:19px;line-height:1.2;font-weight:650}.homeCard .eyebrow{font-size:9px;color:#657269;letter-spacing:1px;margin-bottom:7px}.homeCard .phaseNote{font-size:12px;line-height:1.4;margin:7px 0 9px;color:#657269}.homeCard #homeCopy{font-size:10px;margin:7px 0 10px}.homeCard #homeSchedule{font-size:9px;margin:5px 0;color:#657269}.homeCard .textbtn{font-size:10px;margin:7px auto 0;min-height:24px}.homeCard .btn{min-height:43px;box-shadow:0 2px 0 #739181;font-size:13px}.homeCard.isActive h2{font-size:17px}.homeCard.isActive #homeCopy{margin:7px 0}.homeCard.isActive .careTimer{margin:9px 0}
+.companionStatus{top:auto;bottom:110px;left:50%;transform:translateX(-50%);padding:7px 13px;border:1px solid #eff0df;background:#fff9e9e3;color:#657269;font-size:10px;max-width:calc(100vw - 32px);box-shadow:none;pointer-events:none}
+body:not(.homeView) .companionStatus{display:block}.companionStatus.hidden{display:none!important}.homeView .companionStatus{top:51dvh;bottom:auto}
+.activityNotice{top:111px;background:#fff9eff5;border-color:#ebdfc9;box-shadow:0 5px 20px #74897614}.noticeMain strong{color:#617561;font-weight:600}.noticeMain span{color:#536f62}.careReward{top:111px;background:#f8f6e8f2;border-color:#ece4cb;color:#5e7464;font-size:12px}.careReward strong{font-size:15px}.careReward span{font-size:12px}.careReward small{font-size:9px}
+.context{bottom:150px;background:#fff9eff2;border-color:#ede6d2;border-radius:18px;box-shadow:0 6px 25px #5e796810}.context h3{font-size:15px}.context p{font-size:12px}.context .btn{min-height:39px;font-size:12px}.reaction{background:#fff8ebf5;border-color:#f6e8d0}
+.nav{bottom:20px;background:#fff9efed;border-color:#eee6d3;box-shadow:0 8px 30px #5d7c6c13;gap:3px}.nav button{border-radius:15px;color:#657269;font-size:9px;letter-spacing:.3px}.nav button.active{background:#e4eddf;color:#527c69}.nav button b{font-size:17px}
+.panel,dialog{background:#fffaf0;border-color:#f4ecdb;box-shadow:0 15px 60px #3c605a20}.card,.metric,.option{background:#fffdf6;border-color:#e8e7d6}.option:hover{background:#eef3e6}.decisionScene{background:#e6eee0}.notice{background:#e8efe1}.profileStamp{background:#e6eedf}dialog::backdrop{background:#23483b61;backdrop-filter:blur(4px)}.chips button.on{background:#e3eddc;border-color:#8caa88;color:#4c725e}.saving{font-size:9px;color:#657269;bottom:21px;right:16px}
+#avatarPreview{display:block;width:100%;max-width:240px;height:160px;margin:0 auto;background:linear-gradient(#e5eee2,#f7ecd7);border:1px solid #e0e6d4;border-radius:22px;image-rendering:auto}.avatarChoices{display:grid;grid-template-columns:1fr 1fr;gap:10px}.avatarChoices label{font-size:12px}
+body[data-day-phase=night] .wordmark,body[data-day-phase=dawn] .wordmark{color:#f1f2d9}body[data-day-phase=night] .versionStamp,body[data-day-phase=dawn] .versionStamp{color:#d1d7c5}
+@media(min-width:701px){.homeView .homeCard{bottom:109px}.tools{right:24px}.homeView .companionStatus{top:51dvh}.worldHint{left:28px}}
+@media(max-width:700px){.header{left:17px;top:15px}.realClock{top:68px}#sceneNav{top:106px}#sceneNav button{padding:7px 11px;font-size:10px;min-height:31px}.homeCard{bottom:94px;padding:15px 17px 11px;width:calc(100% - 36px);max-width:340px}.homeCard .phaseNote{font-size:11px}.homeCard .btn{font-size:12px}.homeCard h2{font-size:18px}.homeView .companionStatus{top:50dvh;max-width:calc(100% - 36px);font-size:9.5px}.activityNotice,.careReward{top:106px}.nav{bottom:18px;width:calc(100% - 64px);max-width:320px}.context{width:calc(100% - 34px);bottom:145px;padding:13px 15px}.panel{top:78px}.saving{display:none}.worldHint{bottom:115px;left:18px;max-width:160px}}
+@media(max-height:740px){.homeCard{max-height:calc(100dvh - 305px);padding:12px 16px 9px}.homeCard .phaseNote{margin:5px 0;font-size:10px}.homeCard #homeCopy{margin:4px 0 7px;font-size:9px}.homeCard #homeSchedule{font-size:8px}.homeCard .eyebrow{margin-bottom:5px;font-size:8px}.homeCard .textbtn{margin-top:4px}.homeCard h2,.homeCard.isActive h2{font-size:16px}.homeView .companionStatus{top:43dvh}.careTimer{gap:10px}.timerOrb{width:50px;height:50px}.timerOrb strong{font-size:16px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}.careReward{animation:none}.companionStatus,.btn,.option{transition:none}}
+
+@media(max-width:700px){.worldLabel,.worldHint,.weather{display:none!important}}
+body:has(#sceneNav:not(.hidden)) .weather{display:none}
+.homeCard .btn{background:#507967;color:#fffdf4;border-color:#436b58}.homeCard .btn:hover{background:#456b59}
+@media(max-height:740px){.homeView .companionStatus{top:51dvh}}
+.homeCard .btn,.context .btn{min-height:44px}
+.nav button.active{color:#456553}.soundControl,.tools summary{color:#5c7164}.careReward span,.careReward small,.noticeMain small{color:#657269}
+/* Keep brief feedback above the avatar, including the back window in small rooms. */
+@media(max-width:700px){
+ .careReward{padding:8px 12px;gap:2px}
+ .careReward strong{font-size:14px;line-height:1.2}
+ .careReward span{font-size:11px;line-height:1.25}
+ .careReward small{font-size:8.5px;line-height:1.2}
+ .noticeMain{padding:8px 12px;min-width:0}
+ .noticeMain strong{font-size:11px;line-height:1.25}
+ .noticeMain span{font-size:12px;line-height:1.25;margin:3px 0}
+ .noticeMain small{font-size:10px;line-height:1.25}
+ .noticeDismiss{padding:5px 10px}
+}

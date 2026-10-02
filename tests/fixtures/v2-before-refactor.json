@@ -1,0 +1,156 @@
+{
+  "version": 2,
+  "profile": {
+    "name": "Persona anterior",
+    "cat": "Gato anterior",
+    "shirt": "#245c70",
+    "skin": "#d69c76",
+    "hair": "#322d35",
+    "goals": [
+      "Movimiento",
+      "Descanso",
+      "Aprendizaje"
+    ],
+    "minutes": 10,
+    "energy": 3,
+    "indoors": false,
+    "avoidPhysical": false,
+    "photo": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD1aiiiuYo//9k=",
+    "care": {
+      "configured": true,
+      "goals": [
+        "sleep"
+      ],
+      "slots": [
+        {
+          "name": "Mañana",
+          "time": "09:00",
+          "enabled": false
+        },
+        {
+          "name": "Tarde",
+          "time": "16:00",
+          "enabled": false
+        },
+        {
+          "name": "Noche",
+          "time": "21:00",
+          "enabled": false
+        }
+      ],
+      "room": {
+        "kind": "bedroom",
+        "wall": "#d8d8c4",
+        "floor": "#deceb2"
+      }
+    }
+  },
+  "real": {
+    "day": 0,
+    "records": [
+      {
+        "id": "old-real-1",
+        "action": "learn",
+        "minutes": 5,
+        "status": "done",
+        "day": 20600,
+        "date": "2026-05-26",
+        "choice": "care"
+      }
+    ],
+    "choices": [
+      {
+        "action": "learn",
+        "situation": "care",
+        "status": "accepted",
+        "day": 20600
+      }
+    ],
+    "active": {
+      "id": "old-timer-1",
+      "action": "rest",
+      "duration": 3,
+      "situation": "care",
+      "title": "Pausa anterior",
+      "day": 20728,
+      "date": "2026-10-02",
+      "timerEnd": 1790953380000,
+      "timerAlerted": false
+    },
+    "flags": {
+      "trail": false,
+      "bridge": false,
+      "library": true,
+      "garden": false,
+      "friend": false,
+      "expedition": false
+    },
+    "events": [
+      {
+        "id": "old-event-1",
+        "kind": "memory",
+        "day": 20600,
+        "date": "2026-05-26",
+        "title": "Recuerdo anterior",
+        "text": "Una página leída.",
+        "recordId": "old-real-1",
+        "action": "learn"
+      }
+    ],
+    "future": [],
+    "memories": [
+      "Una página leída."
+    ],
+    "barriers": {},
+    "seen": [],
+    "discovered": [
+      "plaza"
+    ],
+    "mood": "curious",
+    "energy": 3,
+    "wellbeing": {},
+    "friend": null,
+    "reminders": {},
+    "reminderAcks": {}
+  },
+  "demo": {
+    "day": 2,
+    "records": [
+      {
+        "id": "old-demo-1",
+        "action": "hobby",
+        "minutes": 3,
+        "status": "done",
+        "day": 2,
+        "date": "Ensayo · día 3",
+        "choice": "care"
+      }
+    ],
+    "choices": [],
+    "active": null,
+    "flags": {
+      "trail": false,
+      "bridge": false,
+      "library": false,
+      "garden": false,
+      "friend": false,
+      "expedition": false
+    },
+    "events": [],
+    "future": [],
+    "memories": [],
+    "barriers": {},
+    "seen": [],
+    "discovered": [
+      "plaza"
+    ],
+    "mood": "curious",
+    "energy": 3,
+    "wellbeing": {},
+    "friend": null,
+    "reminders": {},
+    "reminderAcks": {}
+  },
+  "onboard": true,
+  "legacy": null
+}
