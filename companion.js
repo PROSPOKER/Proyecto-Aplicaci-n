@@ -50,6 +50,7 @@ const Companion={
  clearVisual(){world?.setTaskVisual?.(null);if(this.phase==='doing')world?.setActivityAnimation?.('idle',0)},
  dropTask(reason='cancelled'){
   if(this.motion&&world?.motion===this.motion&&this.motion.source==='autonomy'&&this.motion.status==='moving')world.cancelMovement(reason);
+  world?.releaseReservation?.('player');
   this.clearVisual();this.task=null;this.motion=null;this.target=null;this.remaining=0;
   this.phase='idle';this.elapsed=0;this.stalledFor=0;this.lastPosition=null;this.retries=0;
  },
@@ -58,10 +59,12 @@ const Companion={
   this.lastAction=null;this.manualCooldown=0;this.sceneId=this.currentScene();this.failedTasks.clear();this.status('');
  },
  sceneChanged(){
+  window.HabitaLife?.sceneChanged();
   this.dropTask('scenechange');this.queue=[];this.sceneId=this.currentScene();this.idle=2;
   this.manualCooldown=0;this.failedTasks.clear();this.status('');
  },
  manualInput(){
+  window.HabitaLife?.manualInput();
   this.dropTask('manualinput');this.queue=[];this.manualCooldown=6;this.idle=1.5;this.status('');
  },
  candidates(){
@@ -81,6 +84,7 @@ const Companion={
   if(action){const related=choices.filter(t=>t.actions.includes(action));if(related.length)choices=related;}
   const memory=this.memory(),recent=memory.recent.slice(-6),lastTwo=recent.slice(-2);
   if(!objectId){const fresh=choices.filter(t=>!lastTwo.includes(t.key)),different=choices.filter(t=>t.key!==recent.at(-1));if(fresh.length)choices=fresh;else if(different.length)choices=different;}
+  const projectTask=!action&&!objectId?window.HabitaLife?.priority(choices):null;
   const goals=(state.profile.care?.goals||[]).flatMap(g=>CARE_GOALS[g]?.actions||[]);
   const interests=(state.profile.interests||[]).flatMap(id=>COMPANION_INTEREST_ACTIONS[id]||[]);
   const hour=realClock().hour;
@@ -95,14 +99,14 @@ const Companion={
    else if(hour<12&&['water','stretch','eat'].includes(t.animation))weight+=1;
    else if(hour>=12&&hour<19&&['draw','write','tidy','walk'].includes(t.animation))weight+=.7;
    const repeats=recent.filter(key=>key===t.key).length;
-   return Math.max(.1,weight*Math.pow(.45,repeats));
+   return Math.max(.1,weight*Math.pow(.45,repeats)*(window.HabitaLife?.weight(t)||1));
   });
   let roll=Math.random()*weights.reduce((sum,w)=>sum+w,0),index=0;
   for(;index<weights.length-1;index++){roll-=weights[index];if(roll<=0)break;}
-  const task=choices[index],min=Math.max(5,Math.min(40,Number(task.minSeconds)||8)),max=Math.max(min,Math.min(45,Number(task.maxSeconds)||16));
+  const task=projectTask||window.HabitaLife?.decorate(choices[index])||choices[index],min=Math.max(5,Math.min(40,Number(task.minSeconds)||8)),max=Math.max(min,Math.min(45,Number(task.maxSeconds)||16));
   const duration=min+Math.random()*(max-min);
   const openings=['Con calma, decide','Se toma un momento para','Ahora le apetece'];
-  return {...task,duration,caption:openings[Math.floor(Math.random()*openings.length)]+' '+(task.label||task.name||'observar su entorno')+'.',serial:++this.serial};
+  return {...task,duration,caption:task.reason||openings[Math.floor(Math.random()*openings.length)]+' '+(task.label||task.name||'observar su entorno')+'.',serial:++this.serial};
  },
  begin(action){
   this.dropTask('care-reward');this.lastAction=action;
@@ -119,7 +123,9 @@ const Companion={
   this.startTask(task);
  },
  startTask(task){
-  this.dropTask('new-task');this.task=task;this.sceneId=this.currentScene();this.phase='travel';this.retries=0;
+  this.dropTask('new-task');
+  if(world.reserveObject&&!world.reserveObject(task.objectId,'player')){this.idle=1.5;return;}
+  this.task=task;this.sceneId=this.currentScene();this.phase='travel';this.retries=0;
   this.elapsed=0;this.stalledFor=0;this.lastPosition={x:world.player.x,y:world.player.y};
   this.navigate();
  },
@@ -149,6 +155,7 @@ const Companion={
   // Empty paths and reported arrival are insufficient: proximity is always checked.
   if(!this.task||!this.target||!world.arrived(this.target,.45)){this.recover('not-at-object');return;}
   if(this.motion&&world.motion===this.motion&&this.motion.status==='moving')world.cancelMovement('task-start');
+  if(world.reserveObject&&!world.reserveObject(this.task.objectId,'player')){this.recover('object-reserved');return;}
   const object=world.getScene()?.objects?.find(o=>o.id===this.task.objectId);
   if(object)world.player.dir=Math.atan2(object.y+(object.d||0)/2-world.player.y,object.x+(object.w||0)/2-world.player.x);
   this.phase='doing';this.remaining=this.task.duration;this.elapsed=0;this.stalledFor=0;
@@ -159,7 +166,8 @@ const Companion={
   const memory=this.memory();
   memory.recent.push(this.task.key);memory.recent=memory.recent.slice(-24);memory.total=(Number(memory.total)||0)+1;
   this.history.push(this.task.id);this.history=this.history.slice(-12);this.failedTasks.clear();
-  // Saves only companion memory; real/demo activity records are untouched.
+  // Saves only fictional memory and project progress; real activity records are untouched.
+  window.HabitaLife?.completed(this.task);
   save();this.dropTask('completed');this.idle=2.5+Math.random()*3;this.status('');
  },
  interact(object){
@@ -174,8 +182,10 @@ const Companion={
  update(dt){
   if(!world||!Number.isFinite(dt)||dt<=0)return;
   if(this.sceneId!==this.currentScene())this.sceneChanged();
+  window.HabitaLife?.update(dt);
   const el=$('#companionStatus');if(el&&(page!=='world'||world.paused||!this.supported()))el.classList.add('hidden');
   if(!this.supported()||world.paused||page!=='world'||document.hidden)return;
+  if(window.HabitaLife?.encounter){this.status(HabitaLife.encounter.name+' se acercó. '+HabitaLife.encounter.reason);return;}
   if(this.task)this.status(this.phase==='doing'?this.task.caption:'Camina para '+(this.task.label||'acercarse')+'…');
   if(COMPANION_MOVEMENT_KEYS.some(key=>world.keys?.has(key))){if(this.task)this.manualInput();this.manualCooldown=6;return;}
   if(this.manualCooldown>0){
@@ -207,18 +217,19 @@ const Companion={
   const memory=this.memory(),point=p=>p?{x:p.x,y:p.y}:null;
   return {
    sceneId:this.currentScene(),phase:this.phase,
-   task:this.task?{id:this.task.id,objectId:this.task.objectId,key:this.task.key,animation:this.task.animation,target:point(this.target),duration:this.task.duration}:null,
+   task:this.task?{id:this.task.id,objectId:this.task.objectId,key:this.task.key,animation:this.task.animation,target:point(this.target),duration:this.task.duration,reason:this.task.reason||this.task.caption,lifeProject:this.task.lifeProject||null}:null,
    target:point(this.target),motion:this.motion?{id:this.motion.id,status:this.motion.status,target:point(this.motion.target),source:this.motion.source}:null,
    remaining:this.remaining,idle:this.idle,serial:this.serial,manualCooldown:this.manualCooldown,
    completed:memory.total,total:memory.total,recent:[...memory.recent],history:[...this.history],retries:this.retries,failures:this.failures
   };
  }
 };
-function openCompanionAbout(){modal(`<div class="eyebrow">TU COMPAÑERO</div><h2 style="margin-top:8px">Un ritmo que se parece al tuyo.</h2><p>Elige pequeños momentos en casa, la costanera y el jardín. Considera tus intereses, objetivos, actividades realizadas o pospuestas, la hora del día y lo que hizo recientemente. También introduce variación al azar.</p><p>Camina hasta un objeto antes de usarlo. Puedes tocar muebles y lugares para compartir un momento; después recupera su propio ritmo. Combina un catálogo ampliable de tareas, objetos, duraciones y gestos. No tiene conciencia real.</p><p class="small">Su apariencia la eliges tú. Sus gestos son ficción y sus indicadores cuentan actividades; no evalúan tu salud o personalidad. Las preferencias y recuerdos se guardan en este navegador y las acciones del personaje no completan actividades reales.</p><button class="btn full" onclick="closeModal()">Volver a mi rincón</button>`)}
+function openCompanionAbout(){modal(`<div class="eyebrow">TU COMPAÑERO</div><h2 style="margin-top:8px">Una vida que deja huella.</h2><p>${esc(window.HabitaLife?.describe()||'Está eligiendo su próximo momento.')}</p><p>Sus planes consideran tus intereses, objetivos, actividades y la hora. Camina hasta los objetos, recuerda proyectos y conserva encuentros con vecinos que también pueden acercarse por iniciativa propia.</p><p>Combina un catálogo ampliable con memoria y planificación local. No tiene conciencia real. Sus necesidades son ficción y no evalúan tu salud o personalidad. Sus acciones nunca completan actividades reales.</p><button class="btn full" onclick="HabitaLife.openJournal()">Ver proyectos y recuerdos</button><button class="textbtn full" onclick="closeModal()">Volver a mi rincón</button>`)}
 let companionTimerInterval=null,companionVisibilityBound=false;
 function initCompanion(){
  if(!companionTimerInterval)companionTimerInterval=setInterval(timerTick,500);
  QuietSound.label();
+ window.HabitaLife?.init(world);
  if(Companion.boundWorld!==world){
   Companion.subscriptions.forEach(unsubscribe=>unsubscribe());Companion.subscriptions=[];Companion.boundWorld=world;
   Companion.subscriptions.push(world.on('scenechange',()=>Companion.sceneChanged()));

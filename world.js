@@ -28,7 +28,7 @@ class HabitaWorld {
   this.time=0; this.lastInput=performance.now(); this.anim='idle'; this.animUntil=0;
   this.near=null; this.nearId=null; this.paused=false; this.running=false;
   this.particles=[]; this.discovered=new Set(); this.turn=0; this.moving=false;
-  this.activeTask=null; this.pendingInteraction=null; this.npcs=[];
+  this.activeTask=null; this.pendingInteraction=null; this.npcs=[];this.reservations=new Map();
   this.buildMap(); this.initNPCs(); this.resize(); this.camera=this.project(this.player.x,this.player.y); this.bind();
  }
  state(){try{return this.opts.getState?.()||{};}catch{return {};}}
@@ -36,6 +36,17 @@ class HabitaWorld {
  getPOIs(){return POIS.map(p=>({...p,...(p.id==='friend'?{name:this.flags().friend?'Encuentro con '+(this.state().friend?.name||'Emilia'):'Alguien en la plaza'}:{})}));}
  getZone(){return this.zone;}
  getScene(){return this.scene;}
+ actorId(id='player'){return id==='avatar'?'player':id;}
+ getActor(id='player'){id=this.actorId(id);return id==='player'?this.player:this.npcs.find(n=>n.id===id)||null;}
+ actorArrived(id,target,tolerance=.45){const actor=this.getActor(id);return !!actor&&!!target&&Number.isFinite(target.x)&&Number.isFinite(target.y)&&Math.hypot(target.x-actor.x,target.y-actor.y)<=tolerance;}
+ cancelActor(id='player',reason='cancelled'){id=this.actorId(id);if(id==='player'){this.cancelMovement(reason);return;}const actor=this.getActor(id);if(!actor)return;if(actor.motion?.status==='moving'){actor.motion.status='cancelled';actor.motion.reason=reason;}actor.path=[];actor.moving=false;if(reason!=='superseded'){actor.activeTask=null;this.releaseReservation(id);}}
+ setActorAnimation(id,animation,seconds=5){id=this.actorId(id);if(id==='player'){this.setActivityAnimation(animation,seconds);return true;}const actor=this.getActor(id);if(!actor)return false;actor.directorOwned=true;actor.anim=animation||'idle';actor.animUntil=this.time+Math.max(0,seconds);return true;}
+ setActorTask(id,task){id=this.actorId(id);if(id==='player'){this.setTaskVisual(task);return true;}const actor=this.getActor(id);if(!actor)return false;if(task)actor.directorOwned=true;actor.activeTask=task?{...task}:null;return true;}
+ releaseActorControl(id){id=this.actorId(id);if(id==='player')return;const actor=this.getActor(id);if(!actor)return;this.cancelActor(id,'control-released');actor.directorOwned=false;actor.anim='idle';actor.animUntil=0;actor.activeTask=null;actor.wait=1;this.releaseReservation(id);}
+ reserveObject(objectId,actorId='player'){actorId=this.actorId(actorId);if(!this.getActor(actorId)||!this.scene?.objects?.some(o=>o.id===objectId))return false;const existing=this.reservations.get(objectId);if(existing&&existing.actorId!==actorId)return false;this.reservations.set(objectId,{objectId,actorId,sceneId:this.zone});return true;}
+ releaseReservation(actorId='player'){actorId=this.actorId(actorId);for(const [id,r] of this.reservations)if(r.actorId===actorId)this.reservations.delete(id);}
+ reservationSnapshot(){return [...this.reservations.values()].map(r=>({...r}));}
+ cancelAllActors(reason){this.cancelMovement(reason);for(const actor of this.npcs)this.cancelActor(actor.id,reason);this.reservations.clear();}
  on(type,fn){if(typeof fn!=='function')return ()=>{};if(!this.events.has(type))this.events.set(type,new Set());this.events.get(type).add(fn);return ()=>this.events.get(type)?.delete(fn);}
  emit(type,detail){for(const fn of [...(this.events.get(type)||[])])fn(detail);}
  buildMap(){this.trees=[];this.rocks=[];for(let x=0;x<42;x++)for(let y=0;y<42;y++){
@@ -74,7 +85,7 @@ class HabitaWorld {
     const q=this.unproject(p.x,p.y),a=this.project(this.player.x,this.player.y,23),ax=(a.x-this.camera.x)*this.zoomLevel+this.w/2,ay=(a.y-this.camera.y)*this.zoomLevel+this.anchorY();
     this.manualInput('pointer',{x:q.x,y:q.y});
     if(Math.hypot(p.x-ax,p.y-ay)<22){this.opts.onAvatar?.();}
-    else {const poi=this.hitInteraction(p,q);if(poi)this.interact(poi,{manual:false});else this.navigateTo(q.x,q.y,{source:'manual',notify:false});}
+    else {const actor=this.hitCharacter(p);if(actor){this.emit('characterselect',{actorId:actor.id});this.opts.onCharacter?.(actor.id);}else{const poi=this.hitInteraction(p,q);if(poi)this.interact(poi,{manual:false});else this.navigateTo(q.x,q.y,{source:'manual',notify:false});}}
    }
    if(!this.pointers.size){this.gesture=false;this.pinch=null;this.down=null;}
   });
@@ -89,19 +100,20 @@ class HabitaWorld {
    return {object:o,distance:Math.hypot(p.x-sx,p.y-sy),radius:Math.max(19,(w+d)*this.tw/4*this.zoomLevel+9),floorDistance:Math.hypot(q.x-o.x-w/2,q.y-o.y-d/2)};
   }).filter(o=>o.distance<o.radius||o.floorDistance<.8).sort((a,b)=>a.distance-b.distance)[0]?.object||null;
  }
+ hitCharacter(point){return this.npcs.map(actor=>{const p=this.project(actor.x,actor.y,24);return {actor,distance:Math.hypot(point.x-((p.x-this.camera.x)*this.zoomLevel+this.w/2),point.y-((p.y-this.camera.y)*this.zoomLevel+this.anchorY()))};}).filter(n=>n.distance<Math.max(16,19*this.zoomLevel)).sort((a,b)=>a.distance-b.distance)[0]?.actor||null;}
  pinchDistance(){const p=[...this.pointers.values()];return p.length<2?0:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);}
  fitScene(){if(!this.scene)return 1;const width=(this.scene.width+this.scene.height)*this.tw/2,height=(this.scene.width+this.scene.height)*this.th/2+90,smallHome=this.scene.id==='home'&&this.w<=700&&this.h<740;return clamp(Math.min(this.scene.zoom||1,(this.w-36)/width,this.h*.58/height,smallHome?.60:Infinity),.4,1.4);}
  resize(){const r=this.canvas.getBoundingClientRect();this.w=r.width||window.innerWidth;this.h=r.height||window.innerHeight;const d=Math.min(window.devicePixelRatio||1,2);this.dpr=d;this.canvas.width=Math.round(this.w*d);this.canvas.height=Math.round(this.h*d);if(this.scene&&!this.manualZoom)this.zoomLevel=this.fitScene();}
  zoom(delta){this.zoomLevel=clamp(this.zoomLevel*Math.exp(delta),.4,2.4);this.manualZoom=true;this.lastInput=performance.now();}
  recenter(){this.camera=this.scene?.camera?this.project(this.scene.camera.x,this.scene.camera.y):this.project(this.player.x,this.player.y);this.manualZoom=false;this.zoomLevel=this.fitScene();}
  pause(bool){this.paused=!!bool;this.keys.clear();this.pointers.clear();this.gesture=false;this.down=null;}
- destroy(){this.running=false;cancelAnimationFrame(this.raf);this.listeners.forEach(f=>f());this.listeners=[];this.events.clear();}
+ destroy(){this.running=false;this.cancelAllActors('destroyed');cancelAnimationFrame(this.raf);this.listeners.forEach(f=>f());this.listeners=[];this.events.clear();}
  start(){if(this.running)return;this.running=true;this.prev=performance.now();const loop=t=>{if(!this.running)return;const dt=Math.min(Math.max((t-this.prev)/1000,0),.04);this.prev=t;if(!this.paused)this.update(dt,t);this.render();this.raf=requestAnimationFrame(loop);};this.raf=requestAnimationFrame(loop);}
  nearestFree(x,y,maxRadius=4){let best=null;for(let r=0;r<=maxRadius&&!best;r++)for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){const px=Math.floor(x)+i+.5,py=Math.floor(y)+j+.5;if(this.canStand(px,py)){const d=Math.hypot(px-x,py-y);if(!best||d<best.d)best={x:px,y:py,d};}}return best;}
- sceneKeyFor(id,state){return id==='home'?id+':'+(state.profile?.care?.room?.kind||'bedroom'):id;}
+ sceneKeyFor(id,state){return id==='home'?id+':'+(state.profile?.care?.room?.kind||'bedroom')+':'+(state.homeLayout?.revision||0):id;}
  refreshScene(scene=window.HabitaScenes?.get?.(this.zone,this.state())){
   if(!scene)return false;
-  this.cancelMovement('scene-refresh');this.scene=scene;this.sceneKey=this.sceneKeyFor(this.zone,this.state());this.setTaskVisual(null);this.keys.clear();
+  this.cancelAllActors('scene-refresh');this.scene=scene;this.sceneKey=this.sceneKeyFor(this.zone,this.state());this.setTaskVisual(null);this.keys.clear();
   if(!this.canStand(this.player.x,this.player.y)){const free=this.nearestFree(this.player.x,this.player.y);if(free){this.player.x=free.x;this.player.y=free.y;}}
   this.near=null;this.nearId=null;this.opts.onNear?.(null);this.emit('scenechange',{from:this.zone,to:this.zone,refreshed:true});return true;
  }
@@ -109,7 +121,7 @@ class HabitaWorld {
   if(id==='outside'||id==='world')id='outdoor';const state=this.state(),scene=window.HabitaScenes?.get?.(id,state)||null;
   if(!scene&&id!=='outdoor'&&!['home','office','gym','library','cafe'].includes(id))return false;
   if(id===this.zone){if(scene&&this.sceneKey!==this.sceneKeyFor(id,state))this.refreshScene(scene);return true;}const from=this.zone;if(from==='outdoor')this.outside={...this.player};
-  this.cancelMovement('scene-change');this.zone=id;this.scene=scene;this.sceneKey=this.sceneKeyFor(id,state);this.size=scene?.width|| (id==='outdoor'?42:16);this.keys.clear();this.setTaskVisual(null);
+  this.cancelAllActors('scene-change');this.zone=id;this.scene=scene;this.sceneKey=this.sceneKeyFor(id,state);this.size=scene?.width|| (id==='outdoor'?42:16);this.keys.clear();this.setTaskVisual(null);
   const spawn=scene?.spawn||(id==='outdoor'?(this.outside||{x:14,y:31,dir:4}):{x:8,y:12,dir:4});
   this.player={x:spawn.x,y:spawn.y,dir:spawn.dir??4};if(!this.canStand(this.player.x,this.player.y)){const free=this.nearestFree(spawn.x,spawn.y);if(free)this.player={x:free.x,y:free.y,dir:spawn.dir??4};}
   const cp=this.nearestFree(this.player.x-.8,this.player.y+.7);this.cat={x:cp?.x??this.player.x,y:cp?.y??this.player.y,path:[],nextPlan:0};
@@ -146,19 +158,45 @@ class HabitaWorld {
  }
  shortWalk(animation='walk'){const px=Math.floor(this.player.x),py=Math.floor(this.player.y);const offset=Math.floor(hash(Math.floor(this.time),11)*8),dirs=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];for(let n=0;n<8;n++){const [dx,dy]=dirs[(n+offset)%8],x=px+dx+.5,y=py+dy+.5;if(!this.canStand(x,y))continue;const path=this.findPath(px,py,Math.floor(x),Math.floor(y));if(path&&path.length>0&&path.length<7){const m=this.navigateTo(x,y,{source:'interaction'});if(m.status!=='failed'){this.anim=animation;return true;}}}return false;}
  arrived(target,tolerance=.45){return !!target&&Number.isFinite(target.x)&&Number.isFinite(target.y)&&Math.hypot(target.x-this.player.x,target.y-this.player.y)<=tolerance;}
- cancelMovement(reason='cancelled'){if(this.motion?.status==='moving'){this.motion.status='cancelled';this.motion.reason=reason;}this.path=[];this.pendingInteraction=null;this.moving=false;}
+ cancelMovement(reason='cancelled'){if(this.motion?.status==='moving'){this.motion.status='cancelled';this.motion.reason=reason;}this.path=[];this.pendingInteraction=null;this.moving=false;if(reason!=='superseded'){this.setTaskVisual(null);this.releaseReservation('player');}}
  navigateTo(x,y,{source='manual',notify=true}={}){
   if(source==='manual'&&notify)this.manualInput('navigation',{x,y});else this.cancelMovement('superseded');
-  const token={id:++this.motionSerial,status:'moving',target:{x,y},requested:{x,y},source,replans:0,stall:0,elapsed:0};this.motion=token;
-  if(this.paused||!Number.isFinite(x)||!Number.isFinite(y)){token.status='failed';token.reason=this.paused?'paused':'invalid-target';return token;}
+  const token={id:++this.motionSerial,entityId:'player',status:'moving',target:{x,y},requested:{x,y},source,replans:0,stall:0,elapsed:0};this.motion=token;
+  if(this.paused||!Number.isFinite(x)||!Number.isFinite(y)){this.failPlayerMotion(this.paused?'paused':'invalid-target');return token;}
   if(!this.canStand(x,y)){
-   if(source!=='manual'){token.status='failed';token.reason='blocked-target';return token;}
-   const free=this.nearestFree(x,y,3);if(!free){token.status='failed';token.reason='blocked-target';return token;}token.target={x:free.x,y:free.y};
+   if(source!=='manual'){this.failPlayerMotion('blocked-target');return token;}
+   const free=this.nearestFree(x,y,3);if(!free){this.failPlayerMotion('blocked-target');return token;}token.target={x:free.x,y:free.y};
   }
-  if(!this.planMotion(token)){token.status='failed';token.reason='no-route';return token;}
+  if(!this.planMotion(token)){this.failPlayerMotion('no-route');return token;}
   this.animUntil=0;this.marker={...token.target,time:this.time};return token;
  }
  go(x,y){return this.navigateTo(x,y,{source:'manual'}).status!=='failed';}
+ navigateActor(id,x,y,{source='simulation'}={}){
+  id=this.actorId(id);if(id==='player')return this.navigateTo(x,y,{source,notify:false});
+  const actor=this.getActor(id),token={id:++this.motionSerial,entityId:id,status:'moving',target:{x,y},requested:{x,y},source,replans:0,stall:0,elapsed:0};
+  if(!actor){token.status='failed';token.reason='unknown-actor';return token;}
+  this.cancelActor(id,'superseded');actor.directorOwned=true;actor.motion=token;actor.animUntil=0;actor.activeTask=null;
+  if(this.paused||!Number.isFinite(x)||!Number.isFinite(y)||!this.canStand(x,y)){this.failActorMotion(actor,this.paused?'paused':!Number.isFinite(x)||!Number.isFinite(y)?'invalid-target':'blocked-target');return token;}
+  if(!this.planActorMotion(actor,token)){this.failActorMotion(actor,'no-route');}return token;
+ }
+ planActorMotion(actor,token){
+  if(this.actorArrived(actor.id,token.target,.04)){actor.path=[];token.status='arrived';return true;}
+  const path=this.findPath(Math.floor(actor.x),Math.floor(actor.y),Math.floor(token.target.x),Math.floor(token.target.y));if(!path)return false;
+  actor.path=path.map(p=>({x:p.x+.5,y:p.y+.5}));const last=actor.path.at(-1);if(!last||Math.hypot(last.x-token.target.x,last.y-token.target.y)>.02)actor.path.push({...token.target});
+  let length=0,prev=actor;for(const p of actor.path){length+=Math.hypot(p.x-prev.x,p.y-prev.y);prev=p;}token.maxSeconds=token.elapsed+Math.max(8,length/.95*3+8);token.stall=0;return true;
+ }
+ failActorMotion(actor,reason){if(actor.motion){actor.motion.status='failed';actor.motion.reason=reason;}actor.path=[];actor.activeTask=null;actor.moving=false;this.releaseReservation(actor.id);}
+ replanActorMotion(actor,reason){const token=actor.motion;if(!token||token.status!=='moving')return;if(token.replans>=2||!this.canStand(token.target.x,token.target.y)){this.failActorMotion(actor,reason);return;}token.replans++;if(!this.planActorMotion(actor,token))this.failActorMotion(actor,'no-route');}
+ advanceActor(actor,dt){
+  const token=actor.motion;if(!token||token.status!=='moving')return;token.elapsed+=dt;
+  if(token.elapsed>token.maxSeconds){this.failActorMotion(actor,'route-timeout');return;}
+  if(!actor.path.length){if(this.actorArrived(actor.id,token.target,.04))token.status='arrived';else this.replanActorMotion(actor,'incomplete-route');return;}
+  const p=actor.path[0];if(!this.canStand(p.x,p.y)){this.replanActorMotion(actor,'route-blocked');return;}
+  const dx=p.x-actor.x,dy=p.y-actor.y,d=Math.hypot(dx,dy),step=Math.min(d,dt*(actor.speed||1.35)),before={x:actor.x,y:actor.y};
+  if(d>.001)actor.moving=this.moveActor(actor,dx/d*step,dy/d*step,.12);actor.dir=Math.atan2(dy,dx);if(Math.hypot(p.x-actor.x,p.y-actor.y)<.035)actor.path.shift();
+  const progress=Math.hypot(before.x-actor.x,before.y-actor.y);token.stall=progress<.0001?token.stall+dt:0;if(token.stall>1.4)this.replanActorMotion(actor,'stalled');
+  if(!actor.path.length&&this.actorArrived(actor.id,token.target,.04))token.status='arrived';
+ }
  planMotion(token){
   if(this.arrived(token.target,.04)){this.path=[];token.status='arrived';return true;}
   const p=this.player,t=token.target,path=this.findPath(Math.floor(p.x),Math.floor(p.y),Math.floor(t.x),Math.floor(t.y));
@@ -179,10 +217,11 @@ class HabitaWorld {
   }return null;
  }
  discover(id){if(this.discovered.has(id))return;this.discovered.add(id);this.opts.onDiscover?.(id);}
- replanMotion(reason){const m=this.motion;if(!m||m.status!=='moving')return;if(m.replans>=2||!this.canStand(m.target.x,m.target.y)){m.status='failed';m.reason=reason;this.path=[];this.pendingInteraction=null;return;}m.replans++;if(!this.planMotion(m)){m.status='failed';m.reason='no-route';this.path=[];this.pendingInteraction=null;}}
+ failPlayerMotion(reason){if(this.motion){this.motion.status='failed';this.motion.reason=reason;}this.path=[];this.pendingInteraction=null;this.moving=false;this.setTaskVisual(null);this.releaseReservation('player');}
+ replanMotion(reason){const m=this.motion;if(!m||m.status!=='moving')return;if(m.replans>=2||!this.canStand(m.target.x,m.target.y)){this.failPlayerMotion(reason);return;}m.replans++;if(!this.planMotion(m))this.failPlayerMotion('no-route');}
  advancePlayer(dt){
   const m=this.motion;if(!m||m.status!=='moving')return;
-  m.elapsed+=dt;if(m.elapsed>m.maxSeconds){m.status='failed';m.reason='route-timeout';this.path=[];this.pendingInteraction=null;return;}
+  m.elapsed+=dt;if(m.elapsed>m.maxSeconds){this.failPlayerMotion('route-timeout');return;}
   if(!this.path.length){if(this.arrived(m.target,.04))m.status='arrived';else this.replanMotion('incomplete-route');return;}
   const target=this.path[0];if(!this.canStand(target.x,target.y)){this.replanMotion('route-blocked');return;}
   const vx=target.x-this.player.x,vy=target.y-this.player.y,d=Math.hypot(vx,vy),step=dt*(this.anim==='run'?4.5:2.75),before={...this.player};
@@ -192,8 +231,13 @@ class HabitaWorld {
   if(m.stall>1)this.replanMotion('stalled');
   if(!this.path.length&&this.arrived(m.target,.04))m.status='arrived';
  }
- initNPCs(){const definitions=this.scene?.npcs||(this.zone==='outdoor'?[{id:'emilia',x:18.5,y:21.5,waypoints:[{x:18.5,y:21.5},{x:19.5,y:24.5},{x:16.5,y:24.5},{x:16.5,y:20.5}],shirt:'#b98065'}]:[]);this.npcs=definitions.map((n,i)=>({...n,waypoints:(n.waypoints||[]).map(p=>({...p})),path:[],waypoint:0,wait:i*1.4+1,blocked:0,turn:i,moving:false,dir:1}));}
- updateNPCs(dt){for(const n of this.npcs){n.moving=false;if(n.path.length){const t=n.path[0],dx=t.x-n.x,dy=t.y-n.y,d=Math.hypot(dx,dy),step=Math.min(d,dt*.8);if(d>.001)n.moving=this.moveActor(n,dx/d*step,dy/d*step,.12);n.dir=Math.atan2(dy,dx);n.turn+=n.moving?dt*7:0;if(Math.hypot(t.x-n.x,t.y-n.y)<.035)n.path.shift();n.blocked=n.moving?0:n.blocked+dt;if(n.blocked>1){n.path=[];n.wait=1;n.blocked=0;}if(!n.path.length)n.wait=2+hash(n.waypoint,Math.floor(this.time))*4;}else{n.wait-=dt;if(n.wait<=0&&n.waypoints.length){const target=n.waypoints[n.waypoint%n.waypoints.length];n.waypoint++;const path=this.findPath(Math.floor(n.x),Math.floor(n.y),Math.floor(target.x),Math.floor(target.y));if(path){n.path=path.map(p=>({x:p.x+.5,y:p.y+.5}));if(!n.path.length||Math.hypot(n.path[n.path.length-1].x-target.x,n.path[n.path.length-1].y-target.y)>.02)n.path.push({...target});}else n.wait=3;}}}}
+ initNPCs(){const definitions=this.scene?.npcs||(this.zone==='outdoor'?[{id:'emilia',x:18.5,y:21.5,waypoints:[{x:18.5,y:21.5},{x:19.5,y:24.5},{x:16.5,y:24.5},{x:16.5,y:20.5}],shirt:'#b98065'}]:[]);this.npcs=definitions.map((n,i)=>({...n,waypoints:(n.waypoints||[]).map(p=>({...p})),path:[],motion:null,activeTask:null,directorOwned:false,anim:'idle',animUntil:0,waypoint:0,wait:i*1.4+1,blocked:0,turn:i,moving:false,dir:1}));}
+ updateNPCs(dt){for(const n of this.npcs){
+  n.moving=false;
+  if(n.directorOwned){this.advanceActor(n,dt);if(this.time>n.animUntil)n.anim=n.moving?'walk':'idle';n.turn+=n.moving?dt*7:0;continue;}
+  if(n.path.length){const t=n.path[0],dx=t.x-n.x,dy=t.y-n.y,d=Math.hypot(dx,dy),step=Math.min(d,dt*.8);if(d>.001)n.moving=this.moveActor(n,dx/d*step,dy/d*step,.12);n.dir=Math.atan2(dy,dx);n.turn+=n.moving?dt*7:0;if(Math.hypot(t.x-n.x,t.y-n.y)<.035)n.path.shift();n.blocked=n.moving?0:n.blocked+dt;if(n.blocked>1){n.path=[];n.wait=1;n.blocked=0;}if(!n.path.length)n.wait=2+hash(n.waypoint,Math.floor(this.time))*4;}
+  else{n.wait-=dt;if(n.wait<=0&&n.waypoints.length){const target=n.waypoints[n.waypoint%n.waypoints.length];n.waypoint++;const path=this.findPath(Math.floor(n.x),Math.floor(n.y),Math.floor(target.x),Math.floor(target.y));if(path){n.path=path.map(p=>({x:p.x+.5,y:p.y+.5}));if(!n.path.length||Math.hypot(n.path[n.path.length-1].x-target.x,n.path[n.path.length-1].y-target.y)>.02)n.path.push({...target});}else n.wait=3;}}
+ }}
  updateCat(dt){
   const cat=this.cat,distance=Math.hypot(this.player.x-cat.x,this.player.y-cat.y);cat.moving=false;cat.nextPlan=(cat.nextPlan||0)-dt;
   if(distance>1.6&&cat.nextPlan<=0){const candidates=[[-.8,.8],[.8,.8],[-.8,-.8],[.8,-.8]].map(([x,y])=>this.nearestFree(this.player.x+x,this.player.y+y,1)).filter(Boolean).sort((a,b)=>Math.hypot(a.x-cat.x,a.y-cat.y)-Math.hypot(b.x-cat.x,b.y-cat.y));
@@ -218,14 +262,15 @@ class HabitaWorld {
   for(const p of this.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.vz-=45*dt;p.life-=dt;}this.particles=this.particles.filter(p=>p.life>0);
   this.opts.onUpdate?.(dt,now);
  }
- moveActor(actor,dx,dy,margin=.16){let did=false;if(dx&&this.canStand(actor.x+dx,actor.y,margin)){actor.x+=dx;did=true;}if(dy&&this.canStand(actor.x,actor.y+dy,margin)){actor.y+=dy;did=true;}return did;}
+ actorSpace(actor,x,y){if(actor===this.cat)return true;return [this.player,...this.npcs].every(other=>{if(actor===other)return true;const distance=Math.hypot(x-other.x,y-other.y);return distance>=.36||distance>Math.hypot(actor.x-other.x,actor.y-other.y)+.0001;});}
+ moveActor(actor,dx,dy,margin=.16){let did=false;if(dx&&this.canStand(actor.x+dx,actor.y,margin)&&this.actorSpace(actor,actor.x+dx,actor.y)){actor.x+=dx;did=true;}if(dy&&this.canStand(actor.x,actor.y+dy,margin)&&this.actorSpace(actor,actor.x,actor.y+dy)){actor.y+=dy;did=true;}return did;}
  move(dx,dy){this.moving=this.moveActor(this.player,dx,dy);return this.moving;}
  poly(points,fill,stroke){const c=this.ctx;c.beginPath();c.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)c.lineTo(points[i].x,points[i].y);c.closePath();c.fillStyle=fill;c.fill();if(stroke){c.strokeStyle=stroke;c.lineWidth=.7;c.stroke();}}
  box(x,y,w,d,h,color,top,left,z=0){const a=this.project(x,y,z),b=this.project(x+w,y,z),cc=this.project(x+w,y+d,z),dd=this.project(x,y+d,z),at={x:a.x,y:a.y-h},bt={x:b.x,y:b.y-h},ct={x:cc.x,y:cc.y-h},dt={x:dd.x,y:dd.y-h};this.poly([dd,cc,ct,dt],left||color);this.poly([b,cc,ct,bt],color);this.poly([at,bt,ct,dt],top||color);}
  ellipse(x,y,rx,ry,color){const c=this.ctx;c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);c.fillStyle=color;c.fill();}
  line(a,b,color,width=1){const c=this.ctx;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.stroke();}
  tile(x,y,color){this.poly([this.project(x,y),this.project(x+1,y),this.project(x+1,y+1),this.project(x,y+1)],color);}
- render(){const c=this.ctx,d=this.dpr;c.setTransform(d,0,0,d,0,0);const sky=c.createLinearGradient(0,0,0,this.h);const atmosphere=window.HabitaScenes?.getAtmosphere?.()||this.atmosphere?.();sky.addColorStop(0,atmosphere?.sky?.[0]||'#dce8e2');sky.addColorStop(1,atmosphere?.sky?.[1]||'#accac4');c.fillStyle=sky;c.fillRect(0,0,this.w,this.h);c.save();c.translate(this.w/2,this.anchorY());c.scale(this.zoomLevel,this.zoomLevel);c.translate(-this.camera.x,-this.camera.y);
+ render(){const c=this.ctx,d=this.dpr;c.setTransform(d,0,0,d,0,0);const sky=c.createLinearGradient(0,0,0,this.h);const atmosphere=window.HabitaScenes?.getAtmosphere?.()||this.atmosphere?.();sky.addColorStop(0,atmosphere?.sky?.[0]||'#dce8e2');sky.addColorStop(1,atmosphere?.sky?.[1]||'#accac4');c.fillStyle=sky;c.fillRect(0,0,this.w,this.h);window.HabitaScenes?.drawBackdrop?.(this);c.save();c.translate(this.w/2,this.anchorY());c.scale(this.zoomLevel,this.zoomLevel);c.translate(-this.camera.x,-this.camera.y);
   if(window.HabitaScenes?.render?.(this)!==true){if(this.zone==='outdoor')this.drawOutdoor();else this.drawInterior();}
   for(const p of this.particles){const q=this.project(p.x,p.y,p.z);c.globalAlpha=clamp(p.life,0,1);c.fillStyle=p.color;c.fillRect(q.x,q.y,4,4);}c.globalAlpha=1;
   c.restore();if(atmosphere?.tint){c.fillStyle=atmosphere.tint;c.fillRect(0,0,this.w,this.h);}const vignette=c.createRadialGradient(this.w*.5,this.h*.4,this.w*.25,this.w*.5,this.h*.5,Math.max(this.w,this.h)*.85);vignette.addColorStop(0,'rgba(56,65,57,0)');vignette.addColorStop(1,'rgba(36,56,55,.14)');c.fillStyle=vignette;c.fillRect(0,0,this.w,this.h);

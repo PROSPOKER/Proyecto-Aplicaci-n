@@ -506,27 +506,33 @@ async function observeScene(sceneId, reducedMotion = 'no-preference') {
     const s = await session();
     try {
       const previous = await s.p.evaluate(() => state.profile.avatar);
+      const modern = await s.p.evaluate(() => typeof Wardrobe !== 'undefined');
+      const setField = async (key, value) => {
+        if (modern) { const tab = { hairStyle: 'hair', accessory: 'hair', outfit: 'clothes', silhouette: 'face' }[key]; await s.p.locator(`[data-wardrobe-tab="${tab}"]`).click(); }
+        await s.p.locator('#avatar-' + key).selectOption(value);
+      };
       await s.p.evaluate(() => openSettings());
       const previousImage = await s.p.locator('#avatarPreview').evaluate(c => c.toDataURL());
-      await s.p.locator('#avatar-hairStyle').selectOption('curls');
-      await s.p.locator('#avatar-outfit').selectOption('creative');
-      await s.p.locator('#avatar-accessory').selectOption('glasses');
-      await s.p.locator('#avatar-silhouette').selectOption('broad');
+      await setField('hairStyle', 'curls');
+      await setField('outfit', 'creative');
+      await setField('accessory', 'glasses');
+      await setField('silhouette', 'broad');
       const previewImage = await s.p.locator('#avatarPreview').evaluate(c => c.toDataURL());
       assert.notEqual(previewImage, previousImage, 'Preview must reflect appearance choices');
       assert.deepEqual(await s.p.evaluate(() => state.profile.avatar), previous, 'Preview does not mutate saved profile');
-      await s.p.getByRole('button', { name: 'Conservar mi aspecto anterior' }).click({ force: true });
+      await s.p.getByRole('button', { name: modern ? 'Cancelar cambios' : 'Conservar mi aspecto anterior', exact: true }).click({ force: true });
       assert.deepEqual(await s.p.evaluate(() => state.profile.avatar), previous);
       await s.p.evaluate(() => openSettings());
-      await s.p.locator('#avatar-hairStyle').selectOption('braids');
-      await s.p.locator('#avatar-outfit').selectOption('coastal');
-      await s.p.locator('#avatar-accessory').selectOption('headphones');
-      await s.p.locator('#avatar-silhouette').selectOption('slim');
+      await setField('hairStyle', 'braids');
+      await setField('outfit', 'coastal');
+      await setField('accessory', 'headphones');
+      await setField('silhouette', 'slim');
+      if (modern) await s.p.locator('[data-wardrobe-tab="extras"]').click();
       await s.p.locator('#profileInterests [data-interest="reading"]').click({ force: true });
       await s.p.locator('#profileInterests [data-interest="nature"]').click({ force: true });
       await s.p.getByRole('button', { name: 'Guardar mi personaje' }).click({ force: true });
       const saved = await s.p.evaluate(() => ({ avatar: state.profile.avatar, interests: state.profile.interests }));
-      assert.deepEqual(saved.avatar, { hairStyle: 'braids', outfit: 'coastal', accessory: 'headphones', silhouette: 'slim' });
+      for (const [key, value] of Object.entries({ hairStyle: 'braids', outfit: 'coastal', accessory: 'headphones', silhouette: 'slim' })) assert.equal(saved.avatar[key], value);
       assert.deepEqual(saved.interests.sort(), ['nature', 'reading']);
       await advance(s.p, 90000);
       assert.deepEqual(await s.p.evaluate(() => state.profile.avatar), saved.avatar, 'Autonomy cannot change user identity');
