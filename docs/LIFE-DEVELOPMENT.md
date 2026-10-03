@@ -59,6 +59,6 @@ Appearance draws all avatar/NPC layers and previews; Wardrobe.open owns transact
 - [x] Cross-cutting old saves/photo/timer, absence/day boundaries, real/demo, keyboard/reduced motion/audio and mobile/desktop.
 - [x] Artistic sky reviewed in all six periods, with foreground readable.
 - [x] Coordinator reviewed full create→care→consequence→purchase→place→encounter→return journey.
-- [ ] Source uploaded; deployment and public URL status recorded independently.
+- [x] Source uploaded; deployment and public URL status recorded independently in RELEASE-v0.8.md. Deployment completion and the public version remain unconfirmed because the environment blocks Pages access.
 
 Each owner reports changes, checks and remaining dependencies. Final source commits only after the integrated browser journeys pass. Public verification remains distinct from Git push.

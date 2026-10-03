@@ -6,6 +6,8 @@ Sitio: https://prospoker.github.io/Proyecto-Aplicaci-n/
 
 Aplicación estática, sin compilación. GitHub Pages publica `main` desde la raíz; `.nojekyll` permite servir los archivos directamente. La versión aparece en la interfaz. Un commit subido no confirma que Pages haya terminado su despliegue.
 
+Estado de esta entrega y comprobaciones de publicación: [docs/RELEASE-v0.8.md](docs/RELEASE-v0.8.md).
+
 ## Organización
 
 | Archivo | Responsabilidad |
